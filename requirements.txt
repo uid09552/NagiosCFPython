@@ -1,0 +1,4 @@
+cloudfoundry-client
+PyJWT
+timedelta
+requests
