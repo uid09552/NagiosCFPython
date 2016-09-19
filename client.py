@@ -14,6 +14,7 @@ parser.add_argument("--appname")
 parser.add_argument("--uaa", help="uaa api")
 parser.add_argument("--warnOnCrashEventSeconds", help="look back x seconds for crash events", type=int)
 parser.add_argument("--disableWarnOnCrash", help="set parameter for disabling")
+parser.add_argument("--proxy", help="set parameter for disabling")
 _args = parser.parse_args()
 
 
@@ -27,7 +28,7 @@ GETAPPEVENTS = "/v2/events?q=type:app.crash&q=actee:<<appguid>>&order-direction=
 
 
 BYTE_TO_MB = 1024 * 1024
-SECONDS_TO_MINUTES=60
+SECONDS_TO_HOURS=60*60
 if _args.warnOnCrashEventSeconds!=None:
     SecondsFromLastCrashEvent = int(_args.warnOnCrashEventSeconds)  # 10 min
 else:
@@ -36,15 +37,15 @@ else:
 
 
 
-def getToken(user, password, host, resetToken="no"):
+def getToken(user, password, host,proxy=None, resetToken="no"):
     file = open('.token', 'r')
     token = None
 
-    if (file != None and resetToken != "yes"):
+    if file is not None and resetToken != "yes":
         try:
             token = file.read()
             file.close()
-            if token != None and token != '':
+            if token is not None and token != '':
                 decodedtoken = jwt.decode(token, verify=False)
                 exp = decodedtoken['exp']
                 present = int(time.time())
@@ -53,13 +54,16 @@ def getToken(user, password, host, resetToken="no"):
         except Exception, e:
             token = None
 
-    if token == None or resetToken == "yes":
-        client = CloudFoundryClient(host)
+    if token is None or resetToken == "yes":
+        proxyDic = None
+        if proxy is not None:
+            proxyDic = dict(http=proxy, https=proxy)
+        client = CloudFoundryClient(host, proxy=proxyDic)
         client.init_with_user_credentials(user, password)
         token = client.refresh_token
-        file = open('.token', 'w')
-        file.write(token)
-        file.close()
+        tokenfile = open('.token', 'w')
+        tokenfile.write(token)
+        tokenfile.close()
 
     return token
 
@@ -68,19 +72,26 @@ def getCFHeader(token):
     return {"Authorization": "bearer " + token}
 
 def getParsedURL(url, args):
-    if (args.appguid != None):
+    if args.appguid is not None:
         url = url.replace("<<appguid>>", args.appguid)
     return url
 
 def getCFData(url, args):
-    token = getToken(args.user, args.password, args.api)
+    token = getToken(args.user, args.password, args.api, args.proxy)
     headers = getCFHeader(token)
     url=getParsedURL(url,args)
+    proxyDic=None
+    if args.proxy is not None:
+        proxyDic={
+            "http": args.proxy,
+            "https": args.proxy
+        }
 
-    r = requests.get(args.api + url, headers=headers)
+    r = requests.get(args.api + url, headers=headers, proxies=proxyDic)
+
 
     if r.status_code == 401:
-        token = getToken(args.user, args.password, args.api, "yes")
+        token = getToken(args.user, args.password, args.api,args.proxy, "yes")
         headers = getCFHeader(token)
         r = requests.get(args.api + url, headers=headers)
 
@@ -132,18 +143,18 @@ def getAppStats(args):
                 if disk > maxDisk:
                     maxDisk = disk
 
-                runningInstances = runningInstances + 1
+                runningInstances += 1
 
         if runningInstances > 0:
             perfData = " | maxMemory=" + str(maxMemory / (BYTE_TO_MB)) + "MB;" + str(memory * 0.85) + ";" + \
                        str(memory * 0.9) + ";;;" + "maxCPU=" + str(maxCPU) + ";" + str(95) + ";" + str(100) + ";;;" + \
                        ", maxDisk=" + str(maxDisk / (BYTE_TO_MB)) + "MB;" + str(disk_quota * 0.9) + ";" + \
-                       str(disk_quota * 0.9) + ";;;, minUptime=" + str(minUptime / SECONDS_TO_MINUTES) + ";10;10;;;," \
+                       str(disk_quota * 0.9) + ";;;, minUptime=" + str(minUptime / SECONDS_TO_HOURS) + ";10;10;;;," \
                                                                                            " maxUptime=" + str(
-                maxUptime / SECONDS_TO_MINUTES) + ";10;10;;;, instances=" + str(runningInstances) + ";0;0;;;"
+                maxUptime / SECONDS_TO_HOURS) + ";10;10;;;, instances=" + str(runningInstances) + ";0;0;;;"
 
     nagiosState = 3  # Unknown
-    if runningInstances == 0:
+    if runningInstances == 0 and state=="STARTED":
         nagiosState = 2  # Critical
         statusText = "Critical - no running instances"
     elif runningInstances < instances:
@@ -170,3 +181,18 @@ def main(args):
 
 if __name__ == "__main__":
     main(_args)  # TODO EIgenes Modul auslagern
+
+class CFClient:
+    args=None
+    def __init__(self, arguments):
+        _args=arguments
+
+    def getUTCParsedTime(elapsedTime):
+        return str((datetime.datetime.utcnow() - timedelta(seconds=elapsedTime)).isoformat()) + "Z"
+
+
+
+
+class NagiosState:
+    perfData=[]
+
