@@ -28,7 +28,8 @@ GET_APP_EVENTS = "/v2/events?q=type:app.crash&q=actee:<<appguid>>&order-directio
 
 
 BYTE_TO_MB = 1024 * 1024
-SECONDS_TO_HOURS=60*60
+SECONDS_TO_HOURS = 60*60
+
 
 
 if _args.warnOnCrashEventSeconds is not None:
@@ -101,14 +102,14 @@ def get_utc_parsed_time(elapsed_time):
 
 
 def get_app_stats(args):
-    crashEventsLastMinutes = False
+    crash_events_last_minutes = False
     app_summary_json = json.loads(get_cf_data(GET_APP_STATS, args))
     utc_time = get_utc_parsed_time(seconds_from_last_crash_event)
 
     if args.disableWarnOnCrash is None:
         appEvents = json.loads(get_cf_data(GET_APP_EVENTS.replace("<<timestamp>>", utc_time), args))
         if len(appEvents["resources"]) > 0:
-            crashEventsLastMinutes = True
+            crash_events_last_minutes = True
 
     perf_data = ""
     state = app_summary_json["state"]
@@ -149,7 +150,7 @@ def get_app_stats(args):
         nagios_state = 1  # Warning
         status_text = "Warning - not all instances are running"
     elif running_instances == instances:
-        if crashEventsLastMinutes:
+        if crash_events_last_minutes:
             nagios_state = 0
             status_text = "Warning - crash events available"
         else:
@@ -166,6 +167,11 @@ def main(args):
     if (args.action == "appstats"):
         get_app_stats(args)
 
+if _args.appname is not None:
+    apps = json.loads(get_cf_data(GET_APPS,_args))
+    app = filter(lambda x: x["entity"]["name"] == _args.appname, apps.get("resources"))
+    if len(app) > 0:
+        _args.appguid = app[0]["metadata"]["guid"]
 
 if __name__ == "__main__":
     main(_args)  # TODO EIgenes Modul auslagern
