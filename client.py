@@ -14,7 +14,8 @@ parser.add_argument("--appname")
 parser.add_argument("--uaa", help="uaa api")
 parser.add_argument("--warnOnCrashEventSeconds", help="look back x seconds for crash events", type=int)
 parser.add_argument("--disableWarnOnCrash", help="set parameter for disabling")
-parser.add_argument("--proxy", help="set parameter for disabling")
+parser.add_argument("--proxy", help="proxy configuration")
+parser.add_argument("--spaceguid", help="spaceguid to be verified", required=True)
 _args = parser.parse_args()
 
 
@@ -169,9 +170,9 @@ def main(args):
     if (args.action == "appstats"):
         get_app_stats(args)
 
-if _args.appname is not None:
+if _args.appname is not None and _args.spaceguid is not None:
     apps = json.loads(get_cf_data(GET_APPS+"?q=name:"+_args.appname,_args))
-    app = filter(lambda x: x["entity"]["name"] == _args.appname, apps.get("resources"))
+    app = filter(lambda x: x["entity"]["name"] == _args.appname and x["entity"]["space_guid"] == _args.spaceguid, apps.get("resources"))
     if len(app) > 0:
         _args.appguid = app[0]["metadata"]["guid"]
 
