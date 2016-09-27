@@ -1,4 +1,4 @@
-import argparse, sys, requests, jwt, datetime, time, json
+import argparse, sys, requests, jwt, datetime, time, json, os.path
 from datetime import timedelta
 from cloudfoundry_client.client import CloudFoundryClient
 
@@ -39,7 +39,9 @@ else:
 
 
 def get_token(user, password, host, proxy=None, reset_token="no"):
-    token_file = open('.token', 'r')
+    token_file = None
+    if os.path.isfile('.token'):
+        token_file = open('.token', 'r')
     token = None
 
     if token_file is not None and reset_token != "yes":
@@ -168,7 +170,7 @@ def main(args):
         get_app_stats(args)
 
 if _args.appname is not None:
-    apps = json.loads(get_cf_data(GET_APPS,_args))
+    apps = json.loads(get_cf_data(GET_APPS+"?q=name:"+_args.appname,_args))
     app = filter(lambda x: x["entity"]["name"] == _args.appname, apps.get("resources"))
     if len(app) > 0:
         _args.appguid = app[0]["metadata"]["guid"]
