@@ -154,7 +154,7 @@ def get_app_stats(args):
         status_text = "Warning - not all instances are running"
     elif running_instances == instances:
         if crash_events_last_minutes:
-            nagios_state = 0
+            nagios_state = 1
             status_text = "Warning - crash events available"
         else:
             nagios_state = 0
