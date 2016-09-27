@@ -140,11 +140,11 @@ def get_app_stats(args):
 
         if running_instances > 0:
             perf_data = " | max_memory=" + str(max_memory / (BYTE_TO_MB)) + "MB;" + str(memory * 0.85) + ";" + \
-                       str(memory * 0.9) + ";;;" + "max_cpu=" + str(max_cpu) + ";" + str(95) + ";" + str(100) + ";;;" + \
-                       ", max_disk=" + str(max_disk / (BYTE_TO_MB)) + "MB;" + str(disk_quota * 0.9) + ";" + \
-                       str(disk_quota * 0.9) + ";;;, min_uptime=" + str(min_uptime / SECONDS_TO_HOURS) + ";10;10;;;," \
+                       str(memory * 0.9) + ";;;" + " max_cpu=" + str(max_cpu) + ";" + str(95) + ";" + str(100) + ";;;" + \
+                       " max_disk=" + str(max_disk / (BYTE_TO_MB)) + "MB;" + str(disk_quota * 0.9) + ";" + \
+                       str(disk_quota * 0.9) + ";;; min_uptime=" + str(min_uptime / SECONDS_TO_HOURS) + ";10;10;;; " \
                                                                                            " max_uptime=" + str(
-                max_uptime / SECONDS_TO_HOURS) + ";10;10;;;, instances=" + str(running_instances) + ";0;0;;;"
+                max_uptime / SECONDS_TO_HOURS) + ";10;10;;; instances=" + str(running_instances) + ";0;0;;;"
 
     if running_instances == 0 and state=="STARTED":
         nagios_state = 2  # Critical
